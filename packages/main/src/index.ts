@@ -11,7 +11,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as ipc from '~/shared/ipc';
-import * as fs from 'fs';  // add this import
+import * as fs from 'fs';
 
 import * as path from 'path';
 
@@ -26,16 +26,16 @@ import { backgroundFromTheme, editorName, getSettings, updateSettings } from './
 import { updateEnvironmentForProcess } from './modules/shell';
 import { getPlatformWindowOptions } from './modules/window';
 
-// Disable hardware acceleration and setup cache
+// disable cache and hardware accel (fixes errors and performance diff isn't big)
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu-cache');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 
-// Setup custom cache directory
+// set custom cache dir
 const userDataPath = app.getPath('userData');
 const cachePath = path.join(userDataPath, 'Cache');
 
-// Clear and recreate cache directory
+// recreate cache directory
 try {
     if (fs.existsSync(cachePath)) {
         fs.rmSync(cachePath, { recursive: true, force: true });
@@ -45,12 +45,7 @@ try {
     console.error('Failed to setup cache:', error);
 }
 
-// Set cache directory
 app.commandLine.appendSwitch('disk-cache-dir', cachePath);
-
-// Additional performance tweaks
-app.commandLine.appendSwitch('ignore-gpu-blacklist');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
 
 app.setAboutPanelOptions({
 	applicationName: 'RelaGit',
@@ -159,8 +154,8 @@ const constructWindow = async () => {
 			preload: path.join(__dirname, '../preload/preload.mjs'),
 			nodeIntegration: true,
 			contextIsolation: true,
-			backgroundThrottling: false,  // add this
-			enableWebSQL: false,  // add this
+			backgroundThrottling: false,
+			enableWebSQL: false,
 		}
 	});
 
