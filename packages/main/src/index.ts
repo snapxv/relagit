@@ -11,6 +11,7 @@ import {
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as ipc from '~/shared/ipc';
+import * as fs from 'fs';  // add this import
 
 import * as path from 'path';
 
@@ -24,6 +25,32 @@ import initProtocol from './modules/protocol';
 import { backgroundFromTheme, editorName, getSettings, updateSettings } from './modules/settings';
 import { updateEnvironmentForProcess } from './modules/shell';
 import { getPlatformWindowOptions } from './modules/window';
+
+// Disable hardware acceleration and setup cache
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu-cache');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+
+// Setup custom cache directory
+const userDataPath = app.getPath('userData');
+const cachePath = path.join(userDataPath, 'Cache');
+
+// Clear and recreate cache directory
+try {
+    if (fs.existsSync(cachePath)) {
+        fs.rmSync(cachePath, { recursive: true, force: true });
+    }
+    fs.mkdirSync(cachePath, { recursive: true });
+} catch (error) {
+    console.error('Failed to setup cache:', error);
+}
+
+// Set cache directory
+app.commandLine.appendSwitch('disk-cache-dir', cachePath);
+
+// Additional performance tweaks
+app.commandLine.appendSwitch('ignore-gpu-blacklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
 
 app.setAboutPanelOptions({
 	applicationName: 'RelaGit',
@@ -131,7 +158,9 @@ const constructWindow = async () => {
 			devTools: __NODE_ENV__ === 'development' || process.argv.includes('--devtools'),
 			preload: path.join(__dirname, '../preload/preload.mjs'),
 			nodeIntegration: true,
-			contextIsolation: true
+			contextIsolation: true,
+			backgroundThrottling: false,  // add this
+			enableWebSQL: false,  // add this
 		}
 	});
 

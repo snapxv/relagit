@@ -111,20 +111,47 @@ export default (window: BrowserWindow) => {
 		app.exit();
 	});
 
-	ipcMain.handle(ipc.CHECK_IS_IN_PATH, (_, bin: string) => {
+	ipcMain.handle(ipc.CHECK_IS_IN_PATH, async (_, bin: string) => {
 		try {
-			const command = process.platform === 'win32' ? 'where.exe' : 'which';
-
-			const path = child_process.execSync(`${command} ${bin}`, {
-				env: preloadPathEnv()
-			});
-
-			return new TextDecoder().decode(path);
+			// better windows check
+			if (process.platform === 'win32') {
+				const commonPaths = [
+					'C:\\Program Files\\Git\\cmd\\git.exe',
+					'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+					'%ProgramFiles%\\Git\\cmd\\git.exe',
+					'%LocalAppData%\\Programs\\Git\\cmd\\git.exe'
+				];
+	
+				// try direct command first
+				try {
+					child_process.execSync('git --version', {
+						env: preloadPathEnv()
+					});
+					return true;
+				} catch {
+					// check common paths if direct fails
+					for (const path of commonPaths) {
+						try {
+							child_process.execSync(`"${path}" --version`);
+							return path;
+						} catch {
+							continue;
+						}
+					}
+				}
+			} else {
+				// unix systems
+				const path = child_process.execSync('which git');
+				return new TextDecoder().decode(path);
+			}
+	
+			return false;
 		} catch (error) {
+			console.error('Git check failed:', error);
 			return false;
 		}
 	});
-
+	
 	ipcMain.handle(ipc.SPAWN_ENV, (_, exec: string, path: string) => {
 		const parts = exec.split(' ');
 		const command = parts.shift()!;
